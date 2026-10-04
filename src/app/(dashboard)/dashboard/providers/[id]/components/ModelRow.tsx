@@ -280,6 +280,10 @@ export interface ModelRowProps {
   onTestModel?: (modelId: string, fullModel: string) => Promise<void>;
   testStatus?: "ok" | "error" | "quota" | null;
   testingModel?: boolean;
+  /** Prominent "Blacklist" button — appears when testStatus is "error" so users can
+   * quickly hide models that return forbidden/per-model-access errors. #15690 */
+  onBlacklistModel?: (modelId: string, fullModel: string) => Promise<void>;
+  blacklistingModelId?: string | null;
 }
 
 export default function ModelRow({
@@ -303,6 +307,8 @@ export default function ModelRow({
   onTestModel,
   testStatus,
   testingModel,
+  onBlacklistModel,
+  blacklistingModelId,
 }: ModelRowProps) {
   const isHidden = Boolean(model.isHidden);
   const [editing, setEditing] = useState(false);
@@ -431,7 +437,22 @@ export default function ModelRow({
               <span className="material-symbols-outlined text-sm">play_circle</span>
             )}
           </button>
-        )}
+        )}{"/* #15690 — prominent "Blacklist" button shown when a model has an
+            error test status (e.g. "forbidden", "per-model access/subscription").
+            Clicking it hides the model from the provider's catalog so the
+            remaining working models are no longer drowned in error noise. */}{
+        testStatus === "error" && onBlacklistModel && (
+          <button
+            onClick={() => onBlacklistModel(model.id, fullModel)}
+            disabled={blacklistingModelId === model.id}
+            className="flex items-center gap-1 rounded p-1 text-xs font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            title={providerText(t, "blacklistModel", "Blacklist this model (hide from provider)")}
+          >
+            <span className="material-symbols-outlined text-sm">block</span>
+            <span>Blacklist</span>
+          </button>
+        )
+      }
         {onToggleHidden && (
           <button
             onClick={() => onToggleHidden(model.id, !isHidden)}

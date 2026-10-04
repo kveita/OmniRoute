@@ -89,6 +89,9 @@ export interface UseModelVisibilityHandlersReturn {
   handleClearAllModels: () => Promise<void>;
   onTestModel: (modelId: string, fullModel: string) => Promise<void>;
   handleTestAll: (targets: Array<{ modelId: string; fullModel: string }>) => Promise<void>;
+  /** #15690 — blacklist handler: hides a model and notifies the user */
+  handleBlacklistModel: (modelId: string, fullModel: string) => Promise<void>;
+  blacklistingModelId: string | null;
   /** Apply a model's test-all result to the per-row status icon (used by the
    *  passthrough section, which runs its own test-all loop). */
   onModelTestStatusChange: (modelId: string, status: "ok" | "error" | "quota") => void;
@@ -110,6 +113,7 @@ export function useModelVisibilityHandlers({
 }: UseModelVisibilityHandlersParams): UseModelVisibilityHandlersReturn {
   const [compatSavingModelId, setCompatSavingModelId] = useState<string | null>(null);
   const [togglingModelId, setTogglingModelId] = useState<string | null>(null);
+  const [blacklistingModelId, setBlacklistingModelId] = useState<string | null>(null);
   const [bulkVisibilityAction, setBulkVisibilityAction] = useState<"select" | "deselect" | null>(
     null
   );
@@ -228,6 +232,30 @@ export function useModelVisibilityHandlers({
       notify.error(t("failedSaveCustomModel"));
     } finally {
       setTogglingModelId(null);
+    }
+  };
+
+  // #15690 — Blacklist a model: hide it immediately and notify the user.
+  // Reuses the same isHidden persistence as the eye toggle, but provides a
+  // more prominent entry point for models that error with forbidden/per-model
+  // access issues.
+  const handleBlacklistModel = async (
+    modelId: string,
+    fullModel: string
+  ): Promise<void> => {
+    setBlacklistingModelId(modelId);
+    try {
+      await handleToggleModelHidden(providerId, modelId, true);
+      notify.success(
+        providerText(
+          t,
+          "modelBlacklisted",
+          `Blacklisted model ${fullModel} — it has been hidden from this provider.`,
+          { model: fullModel }
+        )
+      );
+    } finally {
+      setBlacklistingModelId(null);
     }
   };
 
@@ -441,6 +469,8 @@ export function useModelVisibilityHandlers({
     handleClearAllModels,
     onTestModel,
     handleTestAll,
+    handleBlacklistModel,
+    blacklistingModelId,
     onModelTestStatusChange: (modelId: string, status: "ok" | "error" | "quota") =>
       setModelTestStatus((prev) => ({ ...prev, [modelId]: status })),
   };
