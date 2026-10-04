@@ -46,6 +46,9 @@ export interface PassthroughModelRowProps {
   onTestModel?: (modelId: string, fullModel: string) => Promise<void>;
   testStatus?: "ok" | "error" | "quota" | null;
   testingModel?: boolean;
+  /** #15690 — blacklist button for models with error test status */
+  onBlacklistModel?: (modelId: string, fullModel: string) => Promise<void>;
+  blacklistingModelId?: string | null;
   // #14337: synced/imported rows had no edit affordance at all, so the manual
   // context-window override that #4125 added for custom models — and that the
   // PUT compatOnly branch has always accepted for these rows — was unreachable
@@ -84,6 +87,8 @@ export default function PassthroughModelRow({
   onTestModel,
   testStatus,
   testingModel,
+  onBlacklistModel,
+  blacklistingModelId,
   contextWindowOverride,
   onSaveContextWindowOverride,
   savingContextOverride,
@@ -342,7 +347,18 @@ export default function PassthroughModelRow({
                 {isHidden ? "visibility_off" : "visibility"}
               </span>
             </button>
-          )}
+          )}{"/* #15690 — blacklist button for models with error status */}{testStatus === "error" && onBlacklistModel && (
+            <button
+              onClick={() => onBlacklistModel(modelId, fullModel)}
+              disabled={blacklistingModelId === modelId}
+              className="flex items-center gap-1 rounded p-1 text-xs font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={providerText(t, "blacklistModel", "Blacklist this model (hide from provider)")}
+            >
+              <span className="material-symbols-outlined text-sm">block</span>
+              <span>Blacklist</span>
+            </button>
+          )
+        }
           <ModelCompatPopover
             t={t}
             providerId={provider}
